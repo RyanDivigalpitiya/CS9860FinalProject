@@ -20,11 +20,14 @@ print(device_lib.list_local_devices())
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 # tf.debugging.set_log_device_placement(True)
 
-## GLOBAL CONSTANTS ##
+## GLOBAL CONSTANTS ########################################################################################
 max_pixel_value = 115 #found max value of images, placed here for reference
-## FUNCTION DEFINITIONS ##
-def showThermalImage(image, filterNoise=False, filterThreshold=None):
 
+## FUNCTION DEFINITIONS ####################################################################################
+## For future re-factor: these function definitions should be placed in different file and imported ########
+############################################################################################################
+def showThermalImage(image, filterNoise=False, filterThreshold=None):
+    ## showThermalImage() displays an instance of a thermal image using the below defined color maps ##
     red_values = np.linspace(0,255,27)
     cmap = colors.ListedColormap([
                                     [red_values[0]/255,  0/255 , 0/255],
@@ -68,9 +71,18 @@ def showThermalImage(image, filterNoise=False, filterThreshold=None):
         norm = colors.BoundaryNorm(colorBoundaries, cmap.N)
         plt.pcolor(image, cmap=cmap, norm=norm)
         plt.show()
+
 def calcScaledImageDimensions(scalingFactor, ogImage):
+    ## when given an image (ogImage) and a scaling factor (scalingFactor),
+    # this function will calculate the dimensions of the new scaled image
+    # (assumes ogImage is a square matrix)
+    # this function is a helper function that is used in imageResolutionScaler() ##
     return ogImage.shape[0]*(scalingFactor+1)-scalingFactor
+
 def imageResolutionScaler(image,scalingFactor,interpolationMethod):
+    ## imageResolutionScaler() is my custom-made resolution upscaler function.
+    # genDataCoordsInScaledImage() below is a helper function that that determines the coordinates of
+    # where the orignal pixels belong in the new upscaled image
     def genDataCoordsInScaledImage(originalImage,scalingFactor): #returns data_x_y_coords_in_ScaledImage
         data_x_y_coords_in_ScaledImage = np.zeros((originalImage.shape[0]*originalImage.shape[1],2))
         dataPointCounter = 0
@@ -82,28 +94,38 @@ def imageResolutionScaler(image,scalingFactor,interpolationMethod):
                 data_x_y_coords_in_ScaledImage[dataPointCounter][1] = colNum
                 dataPointCounter += 1
         return data_x_y_coords_in_ScaledImage
+
     def genScaledImageCoordGrids(originalImage,scalingFactor):
         return np.mgrid[0:calcScaledImageDimensions(scalingFactor, originalImage), 0:calcScaledImageDimensions(scalingFactor, originalImage)]
+
+    # Use this print statement to view intermediate results
     # print("Interp Num:",scalingFactor,"  Interp Image Size:",calcScaledImageDimensions(scalingFactor,image),"x",calcScaledImageDimensions(scalingFactor,image))
     data_x_y_coords_in_ScaledImage = genDataCoordsInScaledImage (originalImage = image, scalingFactor = scalingFactor)
     grid_x, grid_y                 = genScaledImageCoordGrids   (originalImage = image, scalingFactor = scalingFactor)
     ogImageValues = image.ravel()
+    # giddata() is the function from scipy.interpolate that powers imageResolutionScaler()
     scaledImage = griddata(data_x_y_coords_in_ScaledImage, ogImageValues, (grid_x, grid_y), method=interpolationMethod)
     return scaledImage
+
 def highPassFilter(image,filterThreshold):
-    #Recommended parameters: filterThreshold = 80
+    # sets pixels that are below the filterThreshold to zero.
+    # recommended parameters: filterThreshold = 80
     imageToFilter = np.copy(image)
     for rowIx,pixelRow in enumerate(imageToFilter):
         for colIx,pixelValue in enumerate(pixelRow):
             if pixelValue < filterThreshold:
                 imageToFilter[rowIx,colIx] = 0 # Apply a high-pass filter: set pixel values that are below filterThreshold to 0 to help filter noise
     return imageToFilter
+
 def normalizeImage(image):
+    # my own normalizing transformer
     normalizedImage = np.zeros(image.shape)
     max = image.max()
     normalizedImage = image/max
     return normalizedImage
+
 def testSetAccuracy(yhat,yActual):
+    # just a simple function to test basic accuracy when rapidly prototyping code
     if len(yhat) == len(yActual):
         comp = yhat==yActual.ravel()
         if comp.all():
@@ -116,7 +138,8 @@ def testSetAccuracy(yhat,yActual):
             print("Accuracy: ",(correctCounter/len(yActual))*100,"%",sep='')
     else:
         print("Error: Arguments are not the same dimensions!")
-## IMPORT/EXPORT DATA FUNCTIONS
+
+## IMPORT/EXPORT DATA FUNCTIONS ####################################################################################
 def exportImageData(X, x_csvFileName, y=None, y_csvFileName=None):
     # Can use this method to export pre-processed image data if pre-processing takes too long
     # so it can be loaded during next session rather than re-pre-processing from scratch
@@ -147,7 +170,9 @@ def exportImageData(X, x_csvFileName, y=None, y_csvFileName=None):
     # #Test y import:
     # compare = y_imp == y
     # compare.all()
+
 def importImageData(x_csvFileName,y_csvFileName=None):
+    # Used for importing thermal image data stored in CSV files
     #Computation Time for importing 2,000,000 images: 15sec, MacBook Pro. Same as desktop PC
     #Import X:
     importedXarray = pd.read_csv(x_csvFileName).to_numpy()
@@ -179,26 +204,40 @@ def importImageData(x_csvFileName,y_csvFileName=None):
     # #Test y import:
     # compare = y_imp == y
     # compare.all()
+
 def visualizeXyData(imageIndex=0):
+    # simple function to display both the thermal image (X) and the corresponding label (y)
     showThermalImage(X[imageIndex])
     print("Human") if y[imageIndex] == 1 else print("Air Vent")
-## PRE-PROCESSING PIPELINES ##
+
+## PRE-PROCESSING PIPELINES ############################################################################################################
+## Should re-factor this code to make use of SKLearn pipelines and transformers to make it more readable by other people in the industry
+########################################################################################################################################
 def imageResolutionScalerPipline(images,scalingFactor,interpolationMethod):
+    # utilizes the above functions involved in generating upscaled images and returns the set of upscaled images
+    # images are returned as a numpy array of new dimensions corresponding to the new upscaled dimensions
     scaledImages = np.zeros((images.shape[0],calcScaledImageDimensions(scalingFactor, images[0]),calcScaledImageDimensions(scalingFactor, images[0])))
     for index,image in enumerate(images):
         scaledImages[index] = imageResolutionScaler(image,scalingFactor,interpolationMethod)
     return scaledImages
+
 def highPassFilterPipeline(images,filterThreshold):
+    # utilizes the highPassFilter() function above and applies the HPF to a set of input images
+    # pipe returns set of filtered images as numpy array with same dimensions as 'images'
     filteredImages = np.zeros(images.shape)
     for index,image in enumerate(images):
         filteredImages[index] = highPassFilter(image,filterThreshold)
     return filteredImages
+
 def normalizerPipeline(images):
+    # returns numpy array of same dimensions of 'images' where images are normalized using the normalizeImage() function
     normalizedImages = np.zeros(images.shape)
     for index,image in enumerate(images):
         normalizedImages[index] = normalizeImage(image)
     return normalizedImages
+
 def runAllPreProcessingPipline(X,scalingFactor,interpolationMethod):
+    # runs all pre-processing pipes in the below order:
     higherResImages = imageResolutionScalerPipline(images = X,scalingFactor = 3,interpolationMethod = 'linear')
     filteredImages  = highPassFilterPipeline(higherResImages,80)
     X_pre_processed = normalizerPipeline(filteredImages)
@@ -208,20 +247,16 @@ def runAllPreProcessingPipline(X,scalingFactor,interpolationMethod):
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # IMPORT CSV DATA + PRE-PROCESS IMAGES
-
 x_csvFileName = "thermalSensorImages.csv"
 y_csvFileName = "thermalSensorLabels.csv"
 
 # #IMPORT IMAGE DATASETS
 X,y = importImageData(x_csvFileName, y_csvFileName)
-
 X.shape
 y.shape
+
 # #Visualize first X image + first label:
 visualizeXyData(imageIndex=0)
-
-# #Visualize first X image + third label:
-visualizeXyData(imageIndex=2)
 
 # PRE-PROCESS IMAGES
 # Pipline order for pr-processing
@@ -336,7 +371,6 @@ testSetAccuracy(convertYHATtoArray(yhat_raw),y_testSet)
 # 1000/1000 - 0s - loss: 0.5087 - accuracy: 0.7890 - val_loss: 0.5220 - val_accuracy: 0.7650
 # Epoch 10/10
 # 1000/1000 - 0s - loss: 0.4965 - accuracy: 0.7440 - val_loss: 0.5345 - val_accuracy: 0.6800
-# NOTE: If I bump up the number of epochs, accuracy DOES go up to about ~99%. Not 100% however.
 
 #PRE-PROCESSED IMAGE EXPERIMENTS:
 # Train on 1000 samples, validate on 200 samples. epoch = 10

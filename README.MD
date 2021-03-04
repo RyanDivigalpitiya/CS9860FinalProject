@@ -9,7 +9,7 @@
 Smart home technology has experienced rapid growth in the past two decades thanks to advancements in off-the-shelf products featuring Internet-of-Things capabilities and artificial intelligence-based functionalities. 
 A core requirement for delivering basic features in a smart home usually revolves around detecting the presence of residents, either on a room-by-room basis or on a broader scale, such as whether people are home or away from home. Typical off-the-shelf smart home products that can bring such functionality to a home usually utilize motion sensors to detect presence. However, the use of motion sensors for the purpose of detecting if a room is occupied often fails when the person occupying the room is stationary. Examples include sitting on a sofa and watching tv, or simply sleeping at night in their bedroom.
 
-In my project, I propose making use of a person's heat signature to detect whether a room is occupied, by using cheap thermal sensors paired with a Convolutional Neural Network trained to differentiate between a person and false-positives signals found in a room, such as a hot-air vent.
+In my project, I proposed making use of a person's heat signature to detect whether a room is occupied, by using cheap thermal sensors paired with a Convolutional Neural Network trained to differentiate between a person and false-positives signals found in a room, such as a hot-air vent.
 
 ------
 

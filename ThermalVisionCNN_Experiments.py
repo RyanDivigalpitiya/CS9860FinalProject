@@ -81,7 +81,7 @@ def calcScaledImageDimensions(scalingFactor, ogImage):
 
 def imageResolutionScaler(image,scalingFactor,interpolationMethod):
     ## imageResolutionScaler() is my custom-made resolution upscaler function.
-    # genDataCoordsInScaledImage() below is a helper function that that determines the coordinates of
+    # genDataCoordsInScaledImage() below is a helper function that determines the coordinates of
     # where the orignal pixels belong in the new upscaled image
     def genDataCoordsInScaledImage(originalImage,scalingFactor): #returns data_x_y_coords_in_ScaledImage
         data_x_y_coords_in_ScaledImage = np.zeros((originalImage.shape[0]*originalImage.shape[1],2))
